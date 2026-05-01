@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: hotel-classification
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hotel_db
+    username: hotel_user
+    password: hotel_pass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+server:
+  port: 8080

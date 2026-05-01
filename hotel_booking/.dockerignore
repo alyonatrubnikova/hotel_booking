@@ -1,0 +1,13 @@
+target/
+.mvn/
+mvnw
+mvnw.cmd
+*.class
+*.jar
+*.war
+.git/
+.idea/
+.vscode/
+*.iml
+.env
+deploy/.env
