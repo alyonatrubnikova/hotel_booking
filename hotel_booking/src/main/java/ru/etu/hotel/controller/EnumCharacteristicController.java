@@ -11,6 +11,7 @@ import ru.etu.hotel.model.dto.response.CharacteristicValueResponse;
 import ru.etu.hotel.model.dto.response.IdResponse;
 import ru.etu.hotel.service.EnumCharacteristicService;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,8 @@ import java.util.Map;
 public class EnumCharacteristicController {
     
     private final EnumCharacteristicService characteristicService;
+    
+    // ========== Старые методы ==========
     
     @PostMapping
     public ResponseEntity<IdResponse> addCharacteristic(@RequestBody CharacteristicRequest request) {
@@ -64,5 +67,45 @@ public class EnumCharacteristicController {
     public ResponseEntity<Map<String, String>> deleteCharacteristic(@PathVariable Integer id) {
         characteristicService.deleteCharacteristic(id);
         return ResponseEntity.ok(Map.of("message", "deleted"));
+    }
+    
+    // ========== НОВЫЕ МЕТОДЫ ДЛЯ ТРЕБОВАНИЙ 1.3 ==========
+    
+    /**
+     * Получить параметры класса с учётом переопределений (для подклассов)
+     * GET /api/characteristics/class/{classId}/with-overrides
+     */
+    @GetMapping("/class/{classId}/with-overrides")
+    public ResponseEntity<List<Map<String, Object>>> getClassParametersWithOverrides(
+            @PathVariable Integer classId) {
+        List<Map<String, Object>> result = characteristicService.getClassParametersWithOverrides(classId);
+        return ResponseEntity.ok(result);
+    }
+    
+    /**
+     * Переопределить параметр для подкласса
+     * POST /api/characteristics/class/{classId}/override?characteristicId=1&isInherited=false&sortOrder=10
+     */
+    @PostMapping("/class/{classId}/override")
+    public ResponseEntity<Map<String, String>> overrideClassParameter(
+            @PathVariable Integer classId,
+            @RequestParam Integer characteristicId,
+            @RequestParam(required = false, defaultValue = "false") Boolean isInherited,
+            @RequestParam(required = false) Integer sortOrder) {
+        characteristicService.overrideClassParameter(classId, characteristicId, isInherited, sortOrder);
+        return ResponseEntity.ok(Map.of("message", "Parameter overridden successfully"));
+    }
+    
+    /**
+     * Установить ограничения min/max для численного параметра
+     * PUT /api/characteristics/{characteristicId}/constraints?min=0&max=100
+     */
+    @PutMapping("/{characteristicId}/constraints")
+    public ResponseEntity<Map<String, String>> setNumericConstraints(
+            @PathVariable Integer characteristicId,
+            @RequestParam(required = false) BigDecimal min,
+            @RequestParam(required = false) BigDecimal max) {
+        characteristicService.setNumericConstraints(characteristicId, min, max);
+        return ResponseEntity.ok(Map.of("message", "Constraints updated successfully"));
     }
 }
