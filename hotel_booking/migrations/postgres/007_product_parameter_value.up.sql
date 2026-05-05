@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS product_parameter_value (
     UNIQUE(product_id, characteristic_id)
 );
 
-CREATE INDEX idx_product_param_product ON product_parameter_value(product_id);
-CREATE INDEX idx_product_param_characteristic ON product_parameter_value(characteristic_id);
+CREATE INDEX IF NOT EXISTS idx_product_param_product ON product_parameter_value(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_param_characteristic ON product_parameter_value(characteristic_id);
 
 -- Триггер для обновления updated_at
 CREATE OR REPLACE FUNCTION update_product_param_updated_at()
@@ -25,14 +25,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_product_param_timestamp ON product_parameter_value;
 CREATE TRIGGER update_product_param_timestamp
     BEFORE UPDATE ON product_parameter_value
     FOR EACH ROW
     EXECUTE FUNCTION update_product_param_updated_at();
 
--- ========== ФУНКЦИИ ДЛЯ РАБОТЫ ==========
-
--- 1. Установить/изменить параметр изделия
+-- Функция: установить параметр изделия
 CREATE OR REPLACE FUNCTION set_product_parameter(
     p_product_id INTEGER,
     p_characteristic_id INTEGER,
@@ -55,7 +54,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 2. Получить все параметры изделия (с наследованием от класса)
+-- Функция: получить все параметры изделия (с наследованием)
 CREATE OR REPLACE FUNCTION get_product_parameters(p_product_id INTEGER)
 RETURNS TABLE (
     characteristic_id INTEGER,
@@ -72,20 +71,17 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     WITH RECURSIVE class_hierarchy AS (
-        -- Начинаем с класса изделия
         SELECT p.class_id, 0 AS level
         FROM product p
         WHERE p.id = p_product_id
         
         UNION ALL
         
-        -- Поднимаемся к родителям
         SELECT ce.parent_id, ch.level + 1
         FROM class_hierarchy ch
         JOIN classification_element ce ON ce.id = ch.class_id
         WHERE ce.parent_id IS NOT NULL
     ),
-    -- Все параметры из иерархии классов (сначала свои, потом родительские)
     all_characteristics AS (
         SELECT DISTINCT ON (ec.id)
             ec.id AS characteristic_id,
@@ -118,10 +114,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. Найти изделия по значению параметра
+-- Функция: найти изделия по значению параметра
 CREATE OR REPLACE FUNCTION find_products_by_parameter(
     p_characteristic_id INTEGER,
-    p_operator VARCHAR(2),   -- '=', '>', '<', '>=', '<=', 'LIKE'
+    p_operator VARCHAR(2),
     p_value NUMERIC DEFAULT NULL,
     p_string TEXT DEFAULT NULL
 )
@@ -171,3 +167,39 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+-- =============================================
+-- ТЕСТОВЫЕ ДАННЫЕ
+-- =============================================
+
+DELETE FROM product_parameter_value;
+
+-- Комната 101: WiFi = 150
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+VALUES (1, 10, 150)
+ON CONFLICT (product_id, characteristic_id) DO UPDATE 
+SET value_number = EXCLUDED.value_number;
+
+-- Комната 102: WiFi = 50
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+VALUES (2, 16, 50)
+ON CONFLICT (product_id, characteristic_id) DO UPDATE 
+SET value_number = EXCLUDED.value_number;
+
+-- Комната 201: WiFi = 200
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+VALUES (3, 28, 200)
+ON CONFLICT (product_id, characteristic_id) DO UPDATE 
+SET value_number = EXCLUDED.value_number;
+
+-- Комната 301: площадь = 65
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+VALUES (4, 49, 65)
+ON CONFLICT (product_id, characteristic_id) DO UPDATE 
+SET value_number = EXCLUDED.value_number;
+
+-- Комната 302: питание Vegetarian
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_string)
+VALUES (5, 53, 'Vegetarian')
+ON CONFLICT (product_id, characteristic_id) DO UPDATE 
+SET value_string = EXCLUDED.value_string;
