@@ -25,4 +25,6 @@ public interface ProductParameterRepository extends JpaRepository<ProductParamet
                                            @Param("operator") String operator,
                                            @Param("value") java.math.BigDecimal value,
                                            @Param("stringValue") String stringValue);
+    @Query(value = "SELECT * FROM find_products_by_filters(CAST(:filters AS jsonb))", nativeQuery = true)
+    List<Object[]> findProductsByFilters(@Param("filters") String filters);
 }

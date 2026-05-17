@@ -1,255 +1,118 @@
 -- 008_complete_spravochnik.up.sql
--- Агрегаты, ограничения и переопределения параметров
 
 -- =============================================
--- 1. ДОБАВЛЯЕМ КОЛОНКИ min/max В enum_characteristic
+-- 1. ДОБАВЛЯЕМ КОЛОНКИ min/max
 -- =============================================
 
 ALTER TABLE enum_characteristic 
 ADD COLUMN IF NOT EXISTS min_value NUMERIC,
 ADD COLUMN IF NOT EXISTS max_value NUMERIC;
 
--- Устанавливаем ограничения для WiFi
-UPDATE enum_characteristic SET min_value = 0, max_value = 1000 
-WHERE characteristic_name = 'WiFi';
-
--- Устанавливаем ограничения для Square
-UPDATE enum_characteristic SET min_value = 1, max_value = 200 
-WHERE characteristic_name = 'Square';
-
 -- =============================================
--- 2. ТАБЛИЦА АГРЕГАТОВ
+-- 2. УСТАНАВЛИВАЕМ ОГРАНИЧЕНИЯ
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS parameter_aggregate (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(128) NOT NULL UNIQUE,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+UPDATE enum_characteristic SET min_value = 0, max_value = 1000 WHERE characteristic_name = 'WiFi';
+UPDATE enum_characteristic SET min_value = 1, max_value = 200 WHERE characteristic_name = 'Square';
 
 -- =============================================
--- 3. ТАБЛИЦА СВЯЗИ АГРЕГАТОВ С ПАРАМЕТРАМИ
+-- 3. ДОБАВЛЯЕМ ЦЕНУ (только если её ещё нет)
 -- =============================================
 
-CREATE TABLE IF NOT EXISTS aggregate_characteristic (
-    aggregate_id INTEGER NOT NULL REFERENCES parameter_aggregate(id) ON DELETE CASCADE,
-    characteristic_id INTEGER NOT NULL REFERENCES enum_characteristic(id) ON DELETE CASCADE,
-    sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (aggregate_id, characteristic_id)
-);
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 5, 5000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 5);
 
-CREATE INDEX IF NOT EXISTS idx_aggregate_char_agg ON aggregate_characteristic(aggregate_id);
-CREATE INDEX IF NOT EXISTS idx_aggregate_char_char ON aggregate_characteristic(characteristic_id);
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 6, 4500, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 6);
 
--- =============================================
--- 4. ТАБЛИЦА ПЕРЕОПРЕДЕЛЕНИЯ ПАРАМЕТРОВ
--- =============================================
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 7, 4000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 7);
 
-CREATE TABLE IF NOT EXISTS class_parameter_override (
-    id SERIAL PRIMARY KEY,
-    class_id INTEGER NOT NULL REFERENCES classification_element(id) ON DELETE CASCADE,
-    characteristic_id INTEGER NOT NULL REFERENCES enum_characteristic(id) ON DELETE CASCADE,
-    is_inherited BOOLEAN NOT NULL DEFAULT FALSE,
-    sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(class_id, characteristic_id)
-);
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 8, 3500, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 8);
 
-CREATE INDEX IF NOT EXISTS idx_class_param_override_class ON class_parameter_override(class_id);
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 9, 8000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 9);
 
--- =============================================
--- 5. УДАЛЯЕМ СТАРЫЕ ДАННЫЕ
--- =============================================
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 10, 10000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 10);
 
-DELETE FROM aggregate_characteristic;
-DELETE FROM parameter_aggregate;
-DELETE FROM class_parameter_override;
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 11, 6000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 11);
 
--- =============================================
--- 6. ТЕСТОВЫЕ ДАННЫЕ - АГРЕГАТЫ
--- =============================================
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 12, 6500, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 12);
 
-INSERT INTO parameter_aggregate (name, description) 
-VALUES ('Основные параметры', 'Интернет и площадь номера');
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 13, 7000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 13);
 
-INSERT INTO parameter_aggregate (name, description) 
-VALUES ('Питание', 'Еда и напитки');
-
-INSERT INTO parameter_aggregate (name, description) 
-VALUES ('Услуги', 'Горничная и трансфер');
+INSERT INTO enum_characteristic (characteristic_name, class_id, value_number, unit_of_measure, sort_order, min_value, max_value)
+SELECT 'Price', 14, 3000, 'руб/ночь', 10, 1000, 50000
+WHERE NOT EXISTS (SELECT 1 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 14);
 
 -- =============================================
--- 7. ТЕСТОВЫЕ ДАННЫЕ - СВЯЗИ АГРЕГАТОВ
+-- 4. ТРИГГЕРЫ ЗАЩИТЫ
 -- =============================================
 
-INSERT INTO aggregate_characteristic (aggregate_id, characteristic_id, sort_order) VALUES
-((SELECT id FROM parameter_aggregate WHERE name = 'Основные параметры'), 10, 1),
-((SELECT id FROM parameter_aggregate WHERE name = 'Основные параметры'), 15, 2),
-((SELECT id FROM parameter_aggregate WHERE name = 'Питание'), 11, 1),
-((SELECT id FROM parameter_aggregate WHERE name = 'Питание'), 12, 2),
-((SELECT id FROM parameter_aggregate WHERE name = 'Услуги'), 13, 1),
-((SELECT id FROM parameter_aggregate WHERE name = 'Услуги'), 14, 2);
+DROP TRIGGER IF EXISTS validate_numeric_trigger ON product_parameter_value;
+DROP TRIGGER IF EXISTS validate_string_trigger ON product_parameter_value;
+DROP FUNCTION IF EXISTS validate_numeric_parameter();
+DROP FUNCTION IF EXISTS validate_string_parameter();
 
--- =============================================
--- 8. ТЕСТОВЫЕ ДАННЫЕ - ПЕРЕОПРЕДЕЛЕНИЯ ДЛЯ ПОДКЛАССОВ
--- =============================================
-
-INSERT INTO class_parameter_override (class_id, characteristic_id, is_inherited, sort_order) VALUES
-(8, 31, false, 1),
-(8, 29, false, 2),
-(7, 11, false, 3),
-(14, 13, false, 4),
-(14, 11, false, 5),
-(14, 12, false, 6),
-(14, 14, false, 7);
-
--- =============================================
--- 9. ФУНКЦИИ ДЛЯ РАБОТЫ С АГРЕГАТАМИ
--- =============================================
-
-DROP FUNCTION IF EXISTS get_all_aggregates();
-DROP FUNCTION IF EXISTS get_aggregate_by_id(INTEGER);
-DROP FUNCTION IF EXISTS add_characteristic_to_aggregate(INTEGER, INTEGER, INTEGER);
-
-CREATE OR REPLACE FUNCTION get_all_aggregates()
-RETURNS TABLE (
-    aggregate_id INTEGER,
-    aggregate_name VARCHAR,
-    description TEXT,
-    characteristics JSON
-) AS $$
+CREATE OR REPLACE FUNCTION validate_numeric_parameter()
+RETURNS TRIGGER AS $$
 BEGIN
-    RETURN QUERY
-    SELECT 
-        pa.id,
-        pa.name,
-        pa.description,
-        COALESCE(
-            (SELECT json_agg(json_build_object(
-                'characteristic_id', ec.id,
-                'characteristic_name', ec.characteristic_name,
-                'sort_order', ac.sort_order
-            ) ORDER BY ac.sort_order)
-             FROM aggregate_characteristic ac
-             JOIN enum_characteristic ec ON ec.id = ac.characteristic_id
-             WHERE ac.aggregate_id = pa.id),
-            '[]'::json
-        ) as characteristics
-    FROM parameter_aggregate pa
-    ORDER BY pa.id;
+    IF NEW.value_number IS NOT NULL AND NEW.value_number < 0 THEN
+        RAISE EXCEPTION 'Значение параметра не может быть отрицательным: %', NEW.value_number;
+    END IF;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION get_aggregate_by_id(p_aggregate_id INTEGER)
-RETURNS TABLE (
-    aggregate_id INTEGER,
-    aggregate_name VARCHAR,
-    description TEXT,
-    characteristics JSON
-) AS $$
+CREATE TRIGGER validate_numeric_trigger
+    BEFORE INSERT OR UPDATE ON product_parameter_value
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_numeric_parameter();
+
+CREATE OR REPLACE FUNCTION validate_string_parameter()
+RETURNS TRIGGER AS $$
 BEGIN
-    RETURN QUERY
-    SELECT 
-        pa.id,
-        pa.name,
-        pa.description,
-        COALESCE(
-            (SELECT json_agg(json_build_object(
-                'characteristic_id', ec.id,
-                'characteristic_name', ec.characteristic_name,
-                'sort_order', ac.sort_order
-            ) ORDER BY ac.sort_order)
-             FROM aggregate_characteristic ac
-             JOIN enum_characteristic ec ON ec.id = ac.characteristic_id
-             WHERE ac.aggregate_id = pa.id),
-            '[]'::json
-        ) as characteristics
-    FROM parameter_aggregate pa
-    WHERE pa.id = p_aggregate_id;
+    IF NEW.value_string IS NOT NULL AND NEW.value_string ~ '^[0-9]+$' THEN
+        RAISE EXCEPTION 'Строковый параметр не может содержать только цифры: %', NEW.value_string;
+    END IF;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION add_characteristic_to_aggregate(
-    p_aggregate_id INTEGER,
-    p_characteristic_id INTEGER,
-    p_sort_order INTEGER DEFAULT 0
-)
-RETURNS BOOLEAN AS $$
-BEGIN
-    INSERT INTO aggregate_characteristic (aggregate_id, characteristic_id, sort_order)
-    VALUES (p_aggregate_id, p_characteristic_id, p_sort_order)
-    ON CONFLICT (aggregate_id, characteristic_id) DO NOTHING;
-    RETURN TRUE;
-END;
-$$ LANGUAGE plpgsql;
+CREATE TRIGGER validate_string_trigger
+    BEFORE INSERT OR UPDATE ON product_parameter_value
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_string_parameter();
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+SELECT 1, id, 5500 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 5
+ON CONFLICT (product_id, characteristic_id) DO UPDATE SET value_number = EXCLUDED.value_number;
 
-CREATE OR REPLACE FUNCTION override_class_parameter(
-    p_class_id INTEGER,
-    p_characteristic_id INTEGER,
-    p_is_inherited BOOLEAN DEFAULT FALSE,
-    p_sort_order INTEGER DEFAULT NULL
-)
-RETURNS BOOLEAN AS $$
-BEGIN
-    INSERT INTO class_parameter_override (class_id, characteristic_id, is_inherited, sort_order)
-    VALUES (p_class_id, p_characteristic_id, p_is_inherited, p_sort_order)
-    ON CONFLICT (class_id, characteristic_id) 
-    DO UPDATE SET 
-        is_inherited = EXCLUDED.is_inherited,
-        sort_order = COALESCE(EXCLUDED.sort_order, class_parameter_override.sort_order);
-    
-    RETURN TRUE;
-END;
-$$ LANGUAGE plpgsql;
-CREATE OR REPLACE FUNCTION get_class_parameters_with_overrides(p_class_id INTEGER)
-RETURNS TABLE (
-    characteristic_id INTEGER,
-    characteristic_name VARCHAR,
-    value_number NUMERIC,
-    value_string TEXT,
-    unit_of_measure VARCHAR,
-    min_value NUMERIC,
-    max_value NUMERIC,
-    is_inherited_from_parent BOOLEAN,
-    is_overridden BOOLEAN,
-    sort_order INTEGER
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH RECURSIVE class_parents AS (
-        SELECT id, parent_id, 0 AS level
-        FROM classification_element
-        WHERE id = p_class_id
-        
-        UNION ALL
-        
-        SELECT ce.id, ce.parent_id, cp.level + 1
-        FROM classification_element ce
-        JOIN class_parents cp ON cp.parent_id = ce.id
-    )
-    SELECT DISTINCT ON (ec.characteristic_name)
-        ec.id,
-        ec.characteristic_name,
-        ec.value_number,
-        ec.value_string,
-        ec.unit_of_measure,
-        ec.min_value,
-        ec.max_value,
-        (cp.level > 0) AS is_inherited_from_parent,
-        (cpo.id IS NOT NULL AND cpo.is_inherited = FALSE) AS is_overridden,
-        COALESCE(cpo.sort_order, ec.sort_order, cp.level * 100) AS sort_order
-    FROM class_parents cp
-    JOIN enum_characteristic ec ON ec.class_id = cp.id
-    LEFT JOIN class_parameter_override cpo ON cpo.class_id = p_class_id AND cpo.characteristic_id = ec.id
-    ORDER BY ec.characteristic_name, 
-              CASE WHEN cpo.is_inherited = FALSE THEN 1 ELSE 0 END,
-              cp.level;
-END;
-$$ LANGUAGE plpgsql;
--- =============================================
--- 10. ПРОВЕРКА
--- =============================================
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+SELECT 2, id, 4800 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 6
+ON CONFLICT (product_id, characteristic_id) DO UPDATE SET value_number = EXCLUDED.value_number;
 
-SELECT 'Все таблицы созданы и заполнены!' AS status;
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+SELECT 3, id, 3800 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 8
+ON CONFLICT (product_id, characteristic_id) DO UPDATE SET value_number = EXCLUDED.value_number;
+
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+SELECT 4, id, 6500 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 11
+ON CONFLICT (product_id, characteristic_id) DO UPDATE SET value_number = EXCLUDED.value_number;
+
+INSERT INTO product_parameter_value (product_id, characteristic_id, value_number)
+SELECT 5, id, 7000 FROM enum_characteristic WHERE characteristic_name = 'Price' AND class_id = 12
+ON CONFLICT (product_id, characteristic_id) DO UPDATE SET value_number = EXCLUDED.value_number;

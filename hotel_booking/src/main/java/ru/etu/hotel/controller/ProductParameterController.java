@@ -47,4 +47,9 @@ public class ProductParameterController {
             characteristicId, operator, value, stringValue);
         return ResponseEntity.ok(results);
     }
+    @PostMapping("/search/filters")
+    public ResponseEntity<List<Object[]>> searchByFilters(@RequestBody String filters) {
+        List<Object[]> results = productParameterService.findProductsByFilters(filters);
+        return ResponseEntity.ok(results);
+}
 }

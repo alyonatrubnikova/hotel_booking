@@ -1,6 +1,5 @@
 -- 006_create_enums.up.sql
 
-
 -- Основная таблица характеристик
 CREATE TABLE IF NOT EXISTS enum_characteristic (
     id SERIAL PRIMARY KEY,

@@ -63,4 +63,7 @@ public class ProductParameterService {
         if (obj instanceof Number n) return n.intValue();
         return null;
     }
+    public List<Object[]> findProductsByFilters(String filters) {
+        return repository.findProductsByFilters(filters);
+}
 }
