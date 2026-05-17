@@ -71,15 +71,12 @@ DELETE FROM class_parameter_override;
 -- 6. ТЕСТОВЫЕ ДАННЫЕ - АГРЕГАТЫ
 -- =============================================
 
--- Агрегат 1: Основные параметры (WiFi + Square)
 INSERT INTO parameter_aggregate (name, description) 
 VALUES ('Основные параметры', 'Интернет и площадь номера');
 
--- Агрегат 2: Питание (Food + Bar)
 INSERT INTO parameter_aggregate (name, description) 
 VALUES ('Питание', 'Еда и напитки');
 
--- Агрегат 3: Услуги (Cleaning + Transfer)
 INSERT INTO parameter_aggregate (name, description) 
 VALUES ('Услуги', 'Горничная и трансфер');
 
@@ -87,18 +84,11 @@ VALUES ('Услуги', 'Горничная и трансфер');
 -- 7. ТЕСТОВЫЕ ДАННЫЕ - СВЯЗИ АГРЕГАТОВ
 -- =============================================
 
--- Основные параметры: WiFi (id=10) и Square (id=15) для класса STD_FULL
 INSERT INTO aggregate_characteristic (aggregate_id, characteristic_id, sort_order) VALUES
 ((SELECT id FROM parameter_aggregate WHERE name = 'Основные параметры'), 10, 1),
-((SELECT id FROM parameter_aggregate WHERE name = 'Основные параметры'), 15, 2);
-
--- Питание: Food (id=11) и Bar (id=12)
-INSERT INTO aggregate_characteristic (aggregate_id, characteristic_id, sort_order) VALUES
+((SELECT id FROM parameter_aggregate WHERE name = 'Основные параметры'), 15, 2),
 ((SELECT id FROM parameter_aggregate WHERE name = 'Питание'), 11, 1),
-((SELECT id FROM parameter_aggregate WHERE name = 'Питание'), 12, 2);
-
--- Услуги: Cleaning (id=13) и Transfer (id=14)
-INSERT INTO aggregate_characteristic (aggregate_id, characteristic_id, sort_order) VALUES
+((SELECT id FROM parameter_aggregate WHERE name = 'Питание'), 12, 2),
 ((SELECT id FROM parameter_aggregate WHERE name = 'Услуги'), 13, 1),
 ((SELECT id FROM parameter_aggregate WHERE name = 'Услуги'), 14, 2);
 
@@ -106,17 +96,10 @@ INSERT INTO aggregate_characteristic (aggregate_id, characteristic_id, sort_orde
 -- 8. ТЕСТОВЫЕ ДАННЫЕ - ПЕРЕОПРЕДЕЛЕНИЯ ДЛЯ ПОДКЛАССОВ
 -- =============================================
 
--- STD_WIFI (id=8): не наследует Cleaning (id=13) и Food (id=11)
 INSERT INTO class_parameter_override (class_id, characteristic_id, is_inherited, sort_order) VALUES
-(8, 13, false, 1),
-(8, 11, false, 2);
-
--- STD_HK (id=7): не наследует Food (id=11)
-INSERT INTO class_parameter_override (class_id, characteristic_id, is_inherited, sort_order) VALUES
-(7, 11, false, 3);
-
--- APT_NONE (id=14): не наследует Cleaning, Food, Bar, Transfer
-INSERT INTO class_parameter_override (class_id, characteristic_id, is_inherited, sort_order) VALUES
+(8, 31, false, 1),
+(8, 29, false, 2),
+(7, 11, false, 3),
 (14, 13, false, 4),
 (14, 11, false, 5),
 (14, 12, false, 6),
@@ -125,6 +108,10 @@ INSERT INTO class_parameter_override (class_id, characteristic_id, is_inherited,
 -- =============================================
 -- 9. ФУНКЦИИ ДЛЯ РАБОТЫ С АГРЕГАТАМИ
 -- =============================================
+
+DROP FUNCTION IF EXISTS get_all_aggregates();
+DROP FUNCTION IF EXISTS get_aggregate_by_id(INTEGER);
+DROP FUNCTION IF EXISTS add_characteristic_to_aggregate(INTEGER, INTEGER, INTEGER);
 
 CREATE OR REPLACE FUNCTION get_all_aggregates()
 RETURNS TABLE (
@@ -216,7 +203,51 @@ BEGIN
     RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
-
+CREATE OR REPLACE FUNCTION get_class_parameters_with_overrides(p_class_id INTEGER)
+RETURNS TABLE (
+    characteristic_id INTEGER,
+    characteristic_name VARCHAR,
+    value_number NUMERIC,
+    value_string TEXT,
+    unit_of_measure VARCHAR,
+    min_value NUMERIC,
+    max_value NUMERIC,
+    is_inherited_from_parent BOOLEAN,
+    is_overridden BOOLEAN,
+    sort_order INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH RECURSIVE class_parents AS (
+        SELECT id, parent_id, 0 AS level
+        FROM classification_element
+        WHERE id = p_class_id
+        
+        UNION ALL
+        
+        SELECT ce.id, ce.parent_id, cp.level + 1
+        FROM classification_element ce
+        JOIN class_parents cp ON cp.parent_id = ce.id
+    )
+    SELECT DISTINCT ON (ec.characteristic_name)
+        ec.id,
+        ec.characteristic_name,
+        ec.value_number,
+        ec.value_string,
+        ec.unit_of_measure,
+        ec.min_value,
+        ec.max_value,
+        (cp.level > 0) AS is_inherited_from_parent,
+        (cpo.id IS NOT NULL AND cpo.is_inherited = FALSE) AS is_overridden,
+        COALESCE(cpo.sort_order, ec.sort_order, cp.level * 100) AS sort_order
+    FROM class_parents cp
+    JOIN enum_characteristic ec ON ec.class_id = cp.id
+    LEFT JOIN class_parameter_override cpo ON cpo.class_id = p_class_id AND cpo.characteristic_id = ec.id
+    ORDER BY ec.characteristic_name, 
+              CASE WHEN cpo.is_inherited = FALSE THEN 1 ELSE 0 END,
+              cp.level;
+END;
+$$ LANGUAGE plpgsql;
 -- =============================================
 -- 10. ПРОВЕРКА
 -- =============================================

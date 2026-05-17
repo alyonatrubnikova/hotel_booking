@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.etu.hotel.model.dto.response.AggregateResponse;
 import ru.etu.hotel.repository.AggregateRepository;
 import jakarta.persistence.EntityNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class AggregateService {
 
     private final AggregateRepository aggregateRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Transactional(readOnly = true)
     public List<AggregateResponse> getAllAggregates() {
@@ -23,12 +25,7 @@ public class AggregateService {
         List<AggregateResponse> responseList = new ArrayList<>();
         
         for (Object[] row : results) {
-            AggregateResponse response = AggregateResponse.builder()
-                    .aggregateId(toInt(row[0]))
-                    .aggregateName((String) row[1])
-                    .description((String) row[2])
-                    .characteristics(parseCharacteristics(row[3]))
-                    .build();
+            AggregateResponse response = mapToResponse(row);
             responseList.add(response);
         }
         return responseList;
@@ -40,13 +37,55 @@ public class AggregateService {
         if (results.isEmpty()) {
             throw new EntityNotFoundException("Aggregate not found with id: " + aggregateId);
         }
-        Object[] row = results.get(0);
+        return mapToResponse(results.get(0));
+    }
+
+    @SuppressWarnings("unchecked")
+    private AggregateResponse mapToResponse(Object[] row) {
+        Integer aggregateId = toInt(row[0]);
+        String aggregateName = (String) row[1];
+        String description = (String) row[2];
+        
+        // Парсим JSON из колонки characteristics
+        List<AggregateResponse.AggregateCharacteristicDto> characteristics = new ArrayList<>();
+        
+        if (row[3] != null) {
+            try {
+                // row[3] может быть String или уже разобранным объектом
+                String jsonStr = row[3].toString();
+                // Парсим JSON-массив в список Map'ов
+                List<Map<String, Object>> charList = objectMapper.readValue(jsonStr, List.class);
+                for (Map<String, Object> ch : charList) {
+                    characteristics.add(AggregateResponse.AggregateCharacteristicDto.builder()
+                            .characteristicId(toInt(ch.get("characteristic_id")))
+                            .characteristicName((String) ch.get("characteristic_name"))
+                            .sortOrder(toInt(ch.get("sort_order")))
+                            .build());
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing characteristics JSON: " + e.getMessage());
+            }
+        }
+        
         return AggregateResponse.builder()
-                .aggregateId(toInt(row[0]))
-                .aggregateName((String) row[1])
-                .description((String) row[2])
-                .characteristics(parseCharacteristics(row[3]))
+                .aggregateId(aggregateId)
+                .aggregateName(aggregateName)
+                .description(description)
+                .characteristics(characteristics)
                 .build();
+    }
+
+    private Integer toInt(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Number) return ((Number) obj).intValue();
+        if (obj instanceof String) {
+            try {
+                return Integer.parseInt((String) obj);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
     @Transactional
@@ -62,34 +101,5 @@ public class AggregateService {
     @Transactional
     public void deleteAggregate(Integer aggregateId) {
         aggregateRepository.deleteById(aggregateId);
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<AggregateResponse.AggregateCharacteristicDto> parseCharacteristics(Object characteristicsObj) {
-        List<AggregateResponse.AggregateCharacteristicDto> list = new ArrayList<>();
-        if (characteristicsObj != null && characteristicsObj instanceof List) {
-            List<Map<String, Object>> chars = (List<Map<String, Object>>) characteristicsObj;
-            for (Map<String, Object> ch : chars) {
-                list.add(AggregateResponse.AggregateCharacteristicDto.builder()
-                        .characteristicId(toInt(ch.get("characteristic_id")))
-                        .characteristicName((String) ch.get("characteristic_name"))
-                        .sortOrder(toInt(ch.get("sort_order")))
-                        .build());
-            }
-        }
-        return list;
-    }
-
-    private Integer toInt(Object obj) {
-        if (obj == null) return null;
-        if (obj instanceof Number) return ((Number) obj).intValue();
-        if (obj instanceof String) {
-            try {
-                return Integer.parseInt((String) obj);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
     }
 }
